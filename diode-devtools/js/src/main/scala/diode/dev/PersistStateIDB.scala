@@ -1,10 +1,10 @@
 package diode.dev
 
 import org.scalajs.dom
-import org.scalajs.dom.{Event, IDBDatabase, IDBObjectStore, IDBTransactionMode}
+import org.scalajs.dom.{ErrorEvent, Event, IDBDatabase, IDBEvent, IDBObjectStore, IDBTransactionMode, IDBVersionChangeEvent}
 
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent._
+import scala.concurrent.*
 import scala.scalajs.js
 
 class PersistStateIDB[M <: AnyRef, P <: js.Any](pickleF: M => P, unpickleF: P => M) extends PersistState[M, P] {
@@ -19,14 +19,14 @@ class PersistStateIDB[M <: AnyRef, P <: js.Any](pickleF: M => P, unpickleF: P =>
       .flatMap { indexedDb =>
         val req = indexedDb.open("DiodePersistence")
         val p   = Promise[IDBDatabase]()
-        req.onsuccess = (_: Event) => {
-          p.success(req.result.asInstanceOf[IDBDatabase])
+        req.onsuccess = (_: IDBEvent[IDBDatabase]) => {
+          p.success(req.result)
         }
-        req.onupgradeneeded = (_: Event) => {
-          val db = req.result.asInstanceOf[IDBDatabase]
+        req.onupgradeneeded = (_: IDBVersionChangeEvent) => {
+          val db = req.result
           db.createObjectStore(storeName)
         }
-        req.onerror = (_: Event) => {
+        req.onerror = (_: ErrorEvent) => {
           p.failure(new Exception(s"IDB error ${req.error.name}"))
         }
         p.future
@@ -49,10 +49,10 @@ class PersistStateIDB[M <: AnyRef, P <: js.Any](pickleF: M => P, unpickleF: P =>
     withStore { store =>
       val p   = Promise[String]()
       val req = store.put(pickled, id)
-      req.onsuccess = (_: Event) => {
+      req.onsuccess = (_: IDBEvent[?]) => {
         p.success(req.result.asInstanceOf[String])
       }
-      req.onerror = (_: Event) => {
+      req.onerror = (_: ErrorEvent) => {
         p.failure(new Exception(s"IDB error ${req.error.name}"))
       }
       p.future
@@ -63,10 +63,10 @@ class PersistStateIDB[M <: AnyRef, P <: js.Any](pickleF: M => P, unpickleF: P =>
     withStore { store =>
       val p   = Promise[P]()
       val req = store.get(id)
-      req.onsuccess = (_: Event) => {
+      req.onsuccess = (_: IDBEvent[?]) => {
         p.success(req.result.asInstanceOf[P])
       }
-      req.onerror = (_: Event) => {
+      req.onerror = (_: ErrorEvent) => {
         p.failure(new Exception(s"IDB error ${req.error.name}"))
       }
       p.future

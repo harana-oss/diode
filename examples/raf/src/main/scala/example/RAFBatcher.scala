@@ -31,7 +31,7 @@ class RAFBatcher[M <: AnyRef] extends ActionProcessor[M] {
           // Precede actions with a time stamp action to get correct time in animations.
           // When dispatching a sequence, Circuit optimizes processing internally and only calls
           // listeners after all the actions are processed
-          dispatch(RAFTimeStamp(time) +: ActionBatch(actions: _*))
+          dispatch(RAFTimeStamp(time) +: ActionBatch(actions*))
       }
       // request next frame
       requestAnimationFrame

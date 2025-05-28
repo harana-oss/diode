@@ -8,8 +8,7 @@ ThisBuild / scalafmtOnCompile := true
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
-ThisBuild / scalaVersion       := "2.13.15"
-ThisBuild / crossScalaVersions := Seq("2.13.15", "3.1.3")
+ThisBuild / scalaVersion       := "3.7.0"
 
 val commonSettings = Seq(
   scalacOptions := Seq(
@@ -17,37 +16,13 @@ val commonSettings = Seq(
     "-encoding",
     "UTF-8",
     "-feature",
-    "-unchecked"
+    "-unchecked",
+    "-Wconf:msg=Implicit parameters should be provided with a `using` clause:s"
   ),
-  scalacOptions ++= scalaVerDependentSeq {
-    case (2, _) =>
-      Seq(
-        "-Xlint",
-        "-Ywarn-dead-code",
-        "-Ywarn-numeric-widen",
-        "-Ywarn-value-discard",
-        "-language:experimental.macros",
-        "-language:existentials"
-      )
-  }.value,
-  scalacOptions ++= scalaVerDependentSeq {
-    case (2, 13) => Seq("-Werror")
-    case (3, _)  => Seq("-Xfatal-warnings")
-  }.value,
-  Compile / scalacOptions -= scalaVerDependent {
-    case (2, _) => "-Ywarn-value-discard"
-  }.value,
-  Compile / doc / scalacOptions -= scalaVerDependent {
-    case (3, _)  => "-Xfatal-warnings"
-    case (2, 13) => "-Werror"
-  }.value,
   testFrameworks += new TestFramework("utest.runner.Framework"),
   libraryDependencies ++= Seq(
-    "com.lihaoyi" %%% "utest" % "0.8.0" % "test"
+    "com.lihaoyi" %%% "utest" % "0.8.5" % "test"
   ),
-  libraryDependencies += scalaVerDependent {
-    case (2, _) => "org.scala-lang.modules" %% "scala-collection-compat" % "2.8.1"
-  }.value
 )
 
 inThisBuild(
@@ -85,41 +60,31 @@ val sourceMapSetting: Def.Initialize[Option[String]] = Def.settingDyn(
 
 val commonJsSettings = Seq(
   scalacOptions += sourceMapSetting.value,
-  scalacOptions ++= scalaVerDependent {
-    case (2, _) => "-P:scalajs:nowarnGlobalExecutionContext"
-    case (3, _) => "-scalajs:nowarnGlobalExecutionContext"
-  }.value
 )
 
 lazy val diodeCore = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("diode-core"))
-  .settings(commonSettings: _*)
+  .settings(commonSettings*)
   .settings(
     name := "diode-core",
-    libraryDependencies += Def.settingDyn {
-      val scalaVer = scalaVersion.value
-      scalaVerDependent {
-        case (2, _) => "org.scala-lang" % "scala-reflect" % scalaVer % "provided"
-      }
-    }.value
   )
-  .jsSettings(commonJsSettings: _*)
+  .jsSettings(commonJsSettings*)
 
 lazy val diodeData = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("diode-data"))
-  .settings(commonSettings: _*)
+  .settings(commonSettings*)
   .settings(
     name := "diode-data"
   )
-  .jsSettings(commonJsSettings: _*)
+  .jsSettings(commonJsSettings*)
   .dependsOn(diodeCore)
 
 lazy val diode = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("diode"))
-  .settings(commonSettings: _*)
+  .settings(commonSettings*)
   .settings(
     name := "diode",
     test := {}
@@ -129,25 +94,12 @@ lazy val diode = crossProject(JSPlatform, JVMPlatform)
 lazy val diodeDevtools = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
   .in(file("diode-devtools"))
-  .settings(commonSettings: _*)
+  .settings(commonSettings*)
   .settings(
     name := "diode-devtools"
   )
-  .jsSettings(commonJsSettings: _*)
+  .jsSettings(commonJsSettings*)
   .jsSettings(
-    libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "2.2.0")
+    libraryDependencies ++= Seq("org.scala-js" %%% "scalajs-dom" % "2.8.0")
   )
   .dependsOn(diodeCore)
-
-lazy val diodeReact: Project = project
-  .enablePlugins(ScalaJSPlugin)
-  .in(file("diode-react"))
-  .settings(commonSettings: _*)
-  .settings(commonJsSettings: _*)
-  .settings(
-    name := "diode-react",
-    libraryDependencies ++= Seq(
-      "com.github.japgolly.scalajs-react" %%% "core" % "2.1.1"
-    )
-  )
-  .dependsOn(diode.js)
